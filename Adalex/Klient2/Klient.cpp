@@ -1,0 +1,287 @@
+//---------------------------------------------------------------------------
+#include <time.h>
+#pragma hdrstop
+#include "WO.h"
+#include "modul1.h"
+//---------------------------------------------------------------------------
+USERES("Klient.res");
+USEUNIT("WO.cpp");
+USEUNIT("ODB.cpp");
+//---------------------------------------------------------------------------
+bool odp;
+//klasy
+zapotrzebowanie zap;
+WysOdb Wysylacz_odbieracz;
+uruchamiacz Uruchamiacz;
+//ogladacz Ogladacz;
+kopiowacz Kopiowacz;
+lacznik Lacznik;
+//funkcje
+bool __stdcall EnumProc(/*HWND*/void * hWnd,/*LPARAM*/long/*lp*/)
+{
+   unsigned long* pPid;   //LPDWORD
+   unsigned long result;      //DWORD
+   void *hg;                  //HGLOBAL
+   unsigned long id,iid;
+   char task[200];
+
+   if(hWnd==NULL)
+      return false;
+
+   hg = GlobalAlloc(GMEM_SHARE,sizeof(unsigned long));
+   pPid = (unsigned long *)GlobalLock(hg);
+
+   result = GetWindowThreadProcessId(hWnd,pPid);
+
+   if(result){
+      char title[110];
+      char className[95];
+      char totalStr[256];
+      GetClassName(hWnd,className,95);
+      GetWindowText(hWnd,title,110);
+      id=*pPid;
+      iid=id;
+      itoa(id,totalStr,10);
+      strcat(totalStr," ");
+      if(title){
+         strcat(totalStr,title);
+         strcat(totalStr," ");
+         strcpy(task,title);
+      }
+      if(className[0]=='T' && className[1]=='A' && className[2]=='p' && className[4]=='l'){
+        strcat(totalStr,className);
+        Uruchamiacz.dodaj_task(task, iid);
+      }
+
+
+   }
+   else{
+      GlobalUnlock(hg);
+      GlobalFree(hg);
+      return false;
+   }
+   GlobalUnlock(hg);
+   GlobalFree(hg);
+   return true;
+}
+char * odczytaj_katalog(char *katalog,long &size){
+    char status='(',status2=')', naz_kat[560];
+    char nazwa_pliku[560],suma2[560];
+    char tekst[]="Dysk aktualnie niedostêpny!";
+    long suma=0;
+    HANDLE plik;
+    DWORD atrib;
+
+    WIN32_FIND_DATA wlasciwosci, *wsk_d_p;
+    wsk_d_p=&wlasciwosci;
+    plik=FindFirstFile(katalog, wsk_d_p);
+  if(plik!=INVALID_HANDLE_VALUE){
+    suma=suma+1+strlen(wsk_d_p->cFileName);
+    strcpy(nazwa_pliku,katalog);
+    nazwa_pliku[strlen(nazwa_pliku)-3]=0;
+    strcat(nazwa_pliku,wsk_d_p->cFileName);
+    atrib=GetFileAttributes(nazwa_pliku);
+    if(atrib &= FILE_ATTRIBUTE_DIRECTORY)suma=suma+2;
+
+
+    while(FindNextFile(plik,wsk_d_p)){
+      suma=suma+1+strlen(wsk_d_p->cFileName);
+      strcpy(nazwa_pliku,katalog);
+      nazwa_pliku[strlen(nazwa_pliku)-3]=0;
+      strcat(nazwa_pliku,wsk_d_p->cFileName);
+      atrib=GetFileAttributes(nazwa_pliku);
+      if(atrib &= FILE_ATTRIBUTE_DIRECTORY)suma=suma+2;
+    }
+    char *pakiet;
+    pakiet=new char[suma];
+    size=suma;
+    suma=0;
+    if((plik=FindFirstFile(katalog, wsk_d_p))!=0){
+    strcpy(nazwa_pliku,katalog);
+    nazwa_pliku[strlen(nazwa_pliku)-3]=0;
+    strcat(nazwa_pliku,wsk_d_p->cFileName);
+    atrib=GetFileAttributes(nazwa_pliku);
+    if(atrib &= FILE_ATTRIBUTE_DIRECTORY){
+      strcpy(suma2,&status);
+      strcat(suma2,wsk_d_p->cFileName);
+      strcat(suma2,&status2);
+      strcpy(nazwa_pliku,suma2);
+    }else strcpy(nazwa_pliku,wsk_d_p->cFileName);
+    strcpy(pakiet,nazwa_pliku);
+    if(atrib &= FILE_ATTRIBUTE_DIRECTORY){
+      pakiet[suma+strlen(nazwa_pliku)-1]=NULL;
+      suma=suma+strlen(nazwa_pliku);
+    }else{
+      pakiet[suma+strlen(nazwa_pliku)]=NULL;
+      suma=suma+strlen(nazwa_pliku)+1;
+    }
+
+
+
+    while(FindNextFile(plik,wsk_d_p)){
+      strcpy(nazwa_pliku,katalog);
+      nazwa_pliku[strlen(nazwa_pliku)-3]=0;
+      strcat(nazwa_pliku,wsk_d_p->cFileName);
+      atrib=GetFileAttributes(nazwa_pliku);
+      if(atrib &= FILE_ATTRIBUTE_DIRECTORY){
+        strcpy(suma2,&status);
+        strcat(suma2,wsk_d_p->cFileName);
+        strcat(suma2,&status2);
+        strcpy(nazwa_pliku,suma2);
+      }else strcpy(nazwa_pliku,wsk_d_p->cFileName);
+      strcpy(pakiet+suma,nazwa_pliku);
+      if(atrib &= FILE_ATTRIBUTE_DIRECTORY){
+        pakiet[suma+strlen(nazwa_pliku)-1]=NULL;
+        suma=suma+strlen(nazwa_pliku);
+      }else{
+        pakiet[suma+strlen(nazwa_pliku)]=NULL;
+        suma=suma+strlen(nazwa_pliku)+1;
+      }
+    }
+  }
+  return pakiet;
+  } size=28;
+  char *pakiet;
+  pakiet=new char[28];
+  strcpy(pakiet,tekst);
+  return pakiet;
+}
+long sprawdz_rozmiar_katalogu(char *katalog){
+    char status='(',status2=')', naz_kat[560];
+    char nazwa_pliku[560],suma2[560];
+    char tekst[]="Dysk aktualnie niedostêpny!";
+    long suma=0;
+    HANDLE plik;
+    DWORD atrib;
+
+    WIN32_FIND_DATA wlasciwosci, *wsk_d_p;
+    wsk_d_p=&wlasciwosci;
+    plik=FindFirstFile(katalog, wsk_d_p);
+  if(plik!=INVALID_HANDLE_VALUE){
+    suma=suma+1+strlen(wsk_d_p->cFileName);
+    strcpy(nazwa_pliku,katalog);
+    nazwa_pliku[strlen(nazwa_pliku)-3]=0;
+    strcat(nazwa_pliku,wsk_d_p->cFileName);
+    atrib=GetFileAttributes(nazwa_pliku);
+    if(atrib &= FILE_ATTRIBUTE_DIRECTORY)suma=suma+2;
+
+
+    while(FindNextFile(plik,wsk_d_p)){
+      suma=suma+1+strlen(wsk_d_p->cFileName);
+      strcpy(nazwa_pliku,katalog);
+      nazwa_pliku[strlen(nazwa_pliku)-3]=0;
+      strcat(nazwa_pliku,wsk_d_p->cFileName);
+      atrib=GetFileAttributes(nazwa_pliku);
+      if(atrib &= FILE_ATTRIBUTE_DIRECTORY)suma=suma+2;
+    }
+    return suma;
+  }
+  return 0;
+}
+
+//---------------------------------------------------------------------------
+WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int)
+{
+   //deklaracje podstawowych zmiennych
+  unsigned long AdresIP; //adres serwera
+  unsigned short port; //nr portu serwera
+  void *wsk; //porêczny wskaŸnik do ró¿nych celów
+  FILE *plik; //uchwyt dla pliku z parametrami serwera
+  clock_t start,end,wynik; //dane potrzebne dla timera
+  odp=false;
+   //pobranie danych serwera
+  plik=fopen("adresIPiNrPortu", "r+b");
+  if(plik==0)return 1;
+  wsk=&AdresIP;
+  fread(wsk,sizeof(unsigned long),1,plik);
+  wsk=&port;
+  fread(wsk,sizeof(unsigned short),1,plik);
+  fclose(plik);
+/*  Lacznik.ja.adres_i_port.sin_family=AF_INET;
+  Lacznik.ja.adres_i_port.sin_port=port;
+  Lacznik.ja.adres_i_port.sin_addr.S_un.S_addr=INADDR_ANY;
+  Wysylacz_odbieracz.bindme(Lacznik.ja.adres_i_port);
+  WO(false);
+  ODB(false); */
+   //wysylanie ze jestem
+  //sprawdzanie odzewu
+  //jezeli niema ponowne wyslanie zg³oszenia
+    //odblokowanie gniazda i skok do //wysy³anie ze jestem
+
+//        long lp=0;
+//        EnumWindows((WNDENUMPROC)EnumProc,lp);
+//        int len=sizeof(Uruchamiacz.lista_prg);
+//        Uruchamiacz.wyslij_programy(zpo,Uruchamiacz.lista_prg.l.tab,len,Wysylacz_odbieracz.server,Lacznik.ja);
+//        Wysylacz_odbieracz.wez_zap2(zpo);
+      zapotrzebowanie_jedno zpo;
+      for(; ;){
+        Lacznik.nasluch(zpo);
+        zap.dodaj_zap(zpo, NA_KONIEC);
+        zpo=zap.sprawdz_zap();
+        Wysylacz_odbieracz.wez_zap(zpo);
+        zap.odejmij(0);
+      if(Wysylacz_odbieracz.odebrane.z.S_zap_n.rozkaz==URUCHOM){
+        Uruchamiacz.uruchom_program(Wysylacz_odbieracz.odebrane.z.S_zap_n.nazwa_pliku_cel, Wysylacz_odbieracz.odebrane.z.S_zap_n.nazwa_kat_cel);
+      }
+      else if(Wysylacz_odbieracz.odebrane.z.S_zap_n.rozkaz==ZGLASZAM_ISTNIENIE){
+        zpo=Wysylacz_odbieracz.odebrane;
+        Lacznik.zglaszanie_istnienia(zpo);
+        zap.dodaj_zap(zpo, NA_KONIEC);
+
+      }
+      else if(Wysylacz_odbieracz.odebrane.z.S_zap_n.rozkaz==ZAMKNIJ_PROGRAM){
+        zpo=Wysylacz_odbieracz.odebrane;
+        Uruchamiacz.zamknij_program(zpo.z.S_zap_n.param[0]);
+        long lp=0;
+        Uruchamiacz.wyczysc();
+        EnumWindows((WNDENUMPROC)EnumProc,lp);
+        int len=sizeof(Uruchamiacz.lista_prg);
+        Uruchamiacz.wyslij_programy(zpo,Uruchamiacz.lista_prg.l.tab,len,Wysylacz_odbieracz.server,Lacznik.ja);
+        zap.dodaj_zap(zpo, NA_KONIEC);
+      }
+
+      else if(Wysylacz_odbieracz.odebrane.z.S_zap_n.rozkaz==DAJ_KATALOG){
+        zpo=Wysylacz_odbieracz.odebrane;
+        long len,size;
+        char *bufor;
+        size=sprawdz_rozmiar_katalogu(zpo.z.S_zap_n.nazwa_kat_zrodlo);
+        bufor=new char[size];
+        bufor=odczytaj_katalog(zpo.z.S_zap_n.nazwa_kat_zrodlo,len);
+        if(len<=60000-416){
+          Lacznik.wyslij_katalog(len, bufor,zpo);
+          Wysylacz_odbieracz.wez_zap2(zpo);
+        }else{
+          int n,ostatni;
+          n=len/(60000-416);
+          ostatni=len-(n*(60000-416));
+          if(ostatni=0)n--;
+          for(int i=0;i<=n;i++){
+            if(ostatni>0 && i==n)size=ostatni;
+            if(ostatni>0 && i<n)size=60000-416;
+            if(ostatni==0)size=60000-416;
+            zpo.z.S_zap_n.ile_kawalkow=n;
+            zpo.z.S_zap_n.ktory_kawalek=i;
+            Lacznik.wyslij_katalog(size, bufor+(n*60000-416),zpo);
+            Wysylacz_odbieracz.wez_zap2(zpo);
+          }
+        } delete bufor;
+      }
+      else if(Wysylacz_odbieracz.odebrane.z.S_zap_n.rozkaz==DAJ_TASKI){
+        zpo=Wysylacz_odbieracz.odebrane;
+        long lp=0;
+        Uruchamiacz.wyczysc();
+        EnumWindows((WNDENUMPROC)EnumProc,lp);
+        int len=sizeof(Uruchamiacz.lista_prg);
+        Uruchamiacz.wyslij_programy(zpo,Uruchamiacz.lista_prg.l.tab,len,Wysylacz_odbieracz.server,Lacznik.ja);
+        zap.dodaj_zap(zpo, NA_KONIEC);
+      }
+      zapotrzebowanie_jedno zap;
+      Wysylacz_odbieracz.odebrane=zap;
+   }
+  //je¿eli jest oczekiwanie na rozkazy
+}
+//---------------------------------------------------------------------------
+
+
+
+

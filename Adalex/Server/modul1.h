@@ -1,0 +1,320 @@
+#ifndef modul1H
+#define modul1H
+#include <winsock2.h>
+#include <string.h>
+#include <io.h>
+
+#define SIZE sizeof(sockaddr_in)
+#define NA_KONIEC -1
+
+//rozkazy
+#define NASLUCH 1
+#define LACZENIE 2
+#define ZAMKNIJ_SIE 3
+#define EKRAN 4
+#define KOPIUJ 5
+#define ZAPISZ 6
+#define ZAMKNOLEM_SIE 7
+#define URUCHOM 8
+#define ZGLASZAM_ISTNIENIE 9
+#define DAJ_KATALOG 10
+#define ODDAJE_KATALOG 11
+#define DAJ_TASKI 12
+#define ODDAJE_TASKI 13
+#define ZAMKNIJ_PROGRAM 14
+//parametry
+#define PRZYSYLAM 201
+#define WYSYLAM 202
+#define WYSYL 203
+#define ODBIOR 204
+#define ZLEC 205
+#define JESTEM 206
+#define SPO_ZAMK 207
+#define SPO_URPO 208
+//b³êdy WO
+#define WO_DLLBRAK 101
+#define WO_ZLAWERSJA 102
+#define WO_BRAK_GNIAZDA 103
+#define WO_ZLE_WIAZANIE 104
+#define WO_BLAD_WYSYLU 105
+#define WO_ODBIERAM 106
+
+//b³êdy kopiowacza
+#define BLAD_ODCZYTU 301
+#define BLAD_ZAPISU 302
+
+//b³edy uruchamiacza
+#define NIE_MOGE_ZAMKNAC 401
+#define ZAMKNOLEM 402
+#define NIE_MOGE_OTWORZYC 403
+#define POZA_PLIKIEM 404 //b³¹d pozycjonowania
+//---------------------------------------------------------------------------
+//Klient
+//---------------------------------------------------------------------------
+class klient
+{
+public:
+  struct sockaddr_in adres_i_port;
+  char nazwa_komputera[40];
+  char dyski[100];
+  int dskdlg;
+  bool operator==(klient &kl2);
+  bool operator!=(klient &kl2);
+};
+//operator ==
+bool klient::operator==(klient &kl2)
+{
+  bool zwrot=false;
+  if(adres_i_port.sin_port==kl2.adres_i_port.sin_port){
+    if(adres_i_port.sin_addr.S_un.S_addr==kl2.adres_i_port.sin_addr.S_un.S_addr){
+      if(!strcmp(nazwa_komputera, kl2.nazwa_komputera))zwrot=true;
+    }
+  }
+  return zwrot;
+}
+//operator !=
+bool klient::operator!=(klient &kl2)
+{
+  bool zwrot=false;
+  if(adres_i_port.sin_port!=kl2.adres_i_port.sin_port)zwrot=true;
+  if(adres_i_port.sin_addr.S_un.S_addr!=kl2.adres_i_port.sin_addr.S_un.S_addr)zwrot=true;
+  if(strcmp(nazwa_komputera, kl2.nazwa_komputera))zwrot=true;
+  return zwrot;
+}
+
+#include "klasa-zap-jedn.h"
+//---------------------------------------------------------------------------
+//STCP procedura do kopiowania danych
+//---------------------------------------------------------------------------
+char* stcp(char* &dest,char* &sour, unsigned long len)
+{
+  for(unsigned long i=0; i<len; i++){
+     dest[i]=sour[i];
+  }
+  return dest-len;
+}
+
+#include "klasa-lista-zap.h"
+#include "klasa-zap.h"
+//---------------------------------------------------------------------------
+//Potrzeby
+//---------------------------------------------------------------------------
+class potrzeby
+{
+protected:
+  lista_zap lista_potrzeb;
+  zapotrzebowanie_jedno aktualna_potrzeba;
+  bool czy_sa_potrzeby;
+  int blad;
+  void anuluj_potrzebe(zapotrzebowanie_jedno ktore);
+};
+//anuluj_potrzebe------------------------------------------------------------
+void potrzeby::anuluj_potrzebe(zapotrzebowanie_jedno ktore)
+{
+  lista_potrzeb.usun_wybrany(ktore);
+  lista_potrzeb.na_poczatek();
+  if(lista_potrzeb.porownaj_zap(ktore,aktualna_potrzeba)==true){
+    lista_potrzeb.na_poczatek();
+    if(lista_potrzeb.czy_ostatni()==false){
+      aktualna_potrzeba=lista_potrzeb.co_na_wybranym();
+      czy_sa_potrzeby=true;
+    }
+    else{
+      czy_sa_potrzeby=false;
+    }
+  }
+}
+//---------------------------------------------------------------------------
+//guzik
+//---------------------------------------------------------------------------
+struct guzik
+{
+  bool blokada;
+  char nazwa[20];
+  TControl * aktualny;
+};
+//---------------------------------------------------------------------------
+//stan_guzik klasa s³u¿¹ca do zarz¹dzania guzikami
+//---------------------------------------------------------------------------
+
+class stan_guzik
+{
+  guzik guziki[100]; //lista guzików
+  int ilosc; //iloœæ guzików
+  void kasuj_z_srodka(int nr);  //kasuje i przesuwa wszystkie w lewo
+  void kasuj_z_konca(void);     //kasuje ostatni
+public:
+  stan_guzik(){ilosc=0;}
+  void blokuj_guzik(int nr);
+  void blokuj_guzik(char* nazwa);
+  void blokuj_wszystkie(void);
+  void odblokuj_guzik(int nr);
+  void odblokuj_guzik(char* nazwa);
+  void odblokuj_wszystkie(void);   //funkcje blokady i odblokowywania guzików
+  void dodaj_guzik(TControl* ktory);
+  void odejmij_guzik(int nr);
+  void odejmij_guzik(char* nazwa);
+  void skasuj_wszystkie_guziki(void); //funkcje zmiany iloœci guzików
+  bool czy_zablokowany(int nr);
+  bool czy_zablokowany(char *nazwa); //funkcje sprawdzaj¹ce stan guzików
+};
+//kasuj z œrodka-------------------------------------------------------------
+void stan_guzik::kasuj_z_srodka(int nr)
+{
+  if(ilosc>0 && nr<ilosc && nr>=0){
+    ilosc--;
+    for(int i=nr;i<ilosc;i++){
+      guziki[i]=guziki[i+1];
+    }
+  }
+}
+//kasuj z koñca--------------------------------------------------------------
+void stan_guzik::kasuj_z_konca(void)
+{
+  ilosc--;
+}
+
+//blokuj guzik---------------------------------------------------------------
+void stan_guzik::blokuj_guzik(int nr)
+{
+  if(nr<ilosc && nr>=0){
+    guziki[nr].blokada=true;
+    guziki[nr].aktualny->Enabled=false;
+  }
+}
+//blokuj guzik---------------------------------------------------------------
+void stan_guzik::blokuj_guzik(char* nazwa)
+{
+  for(int i=0; i<ilosc;i++){
+    if(!strcmp(nazwa,guziki[i].nazwa)){
+      guziki[i].aktualny->Enabled=false;
+    }
+  }
+}
+//blokuj wszystkie-----------------------------------------------------------
+void stan_guzik::blokuj_wszystkie(void){
+  for(int i=0; i<ilosc;i++){
+    guziki[i].aktualny->Enabled=false;
+  }
+}
+//odblokuj guzik-------------------------------------------------------------
+void stan_guzik::odblokuj_guzik(int nr)
+{
+  if(nr<ilosc && nr>=0){
+    guziki[nr].blokada=true;
+    guziki[nr].aktualny->Enabled=true;
+  }
+}
+//odblokuj guzik-------------------------------------------------------------
+void stan_guzik::odblokuj_guzik(char* nazwa)
+{
+  for(int i=0; i<ilosc;i++){
+    if(!strcmp(nazwa,guziki[i].nazwa)){
+      guziki[i].aktualny->Enabled=true;
+    }
+  }
+}
+//odblokuj wszystkie-----------------------------------------------------------
+void stan_guzik::odblokuj_wszystkie(void){
+  for(int i=0; i<ilosc;i++){
+    guziki[i].aktualny->Enabled=true;
+  }
+}
+//dodaj guzik----------------------------------------------------------------
+void stan_guzik::dodaj_guzik(TControl* ktory)
+{
+  bool jest=false;
+  for(int i=0; i<ilosc; i++){
+    if(!strcmp(ktory->Name.c_str(),guziki[i].nazwa)){
+      jest=true;
+    }
+  }
+  if(jest==false){
+    strcpy(guziki[ilosc].nazwa, ktory->Name.c_str());
+    guziki[ilosc].aktualny=ktory;
+    ilosc++;
+  }
+}
+//odejmij guzik--------------------------------------------------------------
+void stan_guzik::odejmij_guzik(int nr)
+{
+  if(ilosc>0 && nr<ilosc && nr>=0){
+    if(nr==ilosc-1)kasuj_z_konca();
+    else kasuj_z_srodka(nr);
+  }
+}
+//odejmij guzik--------------------------------------------------------------
+void stan_guzik::odejmij_guzik(char *nazwa)
+{
+  for(int i=0;i<ilosc;i++){
+    if(!strcmp(nazwa,guziki[i].nazwa)){
+      odejmij_guzik(i);
+    }
+  }
+}
+//skasuj_wszystkie_guziki----------------------------------------------------
+void stan_guzik::skasuj_wszystkie_guziki(void){
+  ilosc=0;
+}
+//czy_zablokowany------------------------------------------------------------
+bool stan_guzik::czy_zablokowany(int nr){
+  return guziki[nr].blokada;
+}
+//czy_zablokowany------------------------------------------------------------
+bool stan_guzik::czy_zablokowany(char *nazwa){
+  for(int i=0;i<ilosc;i++){
+    if(!strcmp(nazwa,guziki[i].nazwa)){
+      return guziki[i].blokada;
+    }
+  }
+  return false;
+}
+
+#include "klasa-WysOdb-plik.h"
+#include "klasa-£¹cznik.h"
+#include "klasa-kopiowacz.h"
+#include "klasa-uruchamiacz.h"
+//---------------------------------------------------------------------------
+//Ogladacz
+//---------------------------------------------------------------------------
+class ogladacz : protected potrzeby
+{
+  int rozmiar_x;
+  int rozmiar_y;
+  int glebia;
+  klient komputer;
+  char okno;
+  int rozpakuj(char* zrodlo,char cel);
+public:
+  ogladacz::ogladacz(klient komp);
+  int wyswietl_obraz(zapotrzebowanie_jedno zap);
+  int ustaw_parametry(int x, int y);
+  int ustaw_parametry(int glebia);
+  int ustaw_parametry(int x, int y, int glebia);
+  void wez_polecenie(zapotrzebowanie_jedno);
+  void zinterpretuj(WysOdb wys, zapotrzebowanie zap);
+};
+//ogladacz::wyswietl_obraz---------------------------------------------------
+int ogladacz::wyswietl_obraz(zapotrzebowanie_jedno zap)
+{
+return 1;
+}
+//ogladacz::zinterpretuj-----------------------------------------------------
+void ogladacz::zinterpretuj(WysOdb wys, zapotrzebowanie zap)
+{
+  if(wys.aktualne.z.S_zap_n.rozkaz==EKRAN && wys.aktualne.z.S_zap_n.param[0]==PRZYSYLAM){
+    wyswietl_obraz(wys.aktualne);
+    zap.odejmij_zap(wys.aktualne);
+  }
+}
+
+extern zapotrzebowanie * Zapotrzebowanie;
+extern zapotrzebowanie zap;
+extern WysOdb Wysylacz_odbieracz;
+extern ogladacz Ogladacz;
+extern kopiowacz Kopiowacz;
+extern lacznik Lacznik;
+extern uruchamiacz Uruchamiacz;
+extern bool czy_jest[100];
+extern int odpowiedz;
+#endif
